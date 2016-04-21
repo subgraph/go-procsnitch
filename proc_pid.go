@@ -137,18 +137,16 @@ func (pi *Info) loadProcessInfo() bool {
 		}
 	}
 
-	
-	bs, err := ioutil.ReadFile(fmt.Sprintf("/proc/%d/stat", pi.Pid))
+	bs, err = ioutil.ReadFile(fmt.Sprintf("/proc/%d/stat", pi.Pid))
 	if err != nil {
 		log.Warning("Error reading cmdline for pid %d: %v", pi.Pid, err)
 		return false
 	}
-	fs := strings.Fields(line)
+	fs := strings.Fields(string(bs))
 	if len(fs) < 50 {
 		log.Warning("Unable to parse stat for pid %d: ", pi.Pid)
 		return false
 	}
-	ppid := fs[4]
 
 	finfo, err := os.Stat(fmt.Sprintf("/proc/%d", pi.Pid))
 	if err != nil {
@@ -157,7 +155,6 @@ func (pi *Info) loadProcessInfo() bool {
 	}
 	sys := finfo.Sys().(*syscall.Stat_t)
 	pi.UID = int(sys.Uid)
-	pi.ParentPid = uint(ppid)
 	pi.ExePath = exePath
 	pi.CmdLine = string(bs)
 	pi.loaded = true
