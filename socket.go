@@ -161,14 +161,16 @@ func (ss *socketStatus) parseLine(line string) error {
 func (ss *socketStatus) parseUnixProcLine(line string) error {
 	var err error
 	fs := strings.Fields(line)
-	if len(fs) != 8 {
+	if len(fs) < 7 || len(fs) > 8 {
 		return errors.New("number of fields don't match parser")
 	}
 	ss.inode, err = strconv.ParseUint(fs[6], 10, 64)
 	if err != nil {
 		return err
 	}
-	ss.path = fs[7]
+	if len(fs) == 8 {
+		ss.path = fs[7]
+	}
 	return nil
 }
 
