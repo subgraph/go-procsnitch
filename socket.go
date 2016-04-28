@@ -22,10 +22,11 @@ type socketStatus struct {
 	local  socketAddr
 	remote socketAddr
 	//status ConnectionStatus
-	uid   int
-	inode uint64
-	line  string
-	path  string
+	uid         int
+	inode       uint64
+	remoteInode uint64
+	line        string
+	path        string
 }
 
 type ConnectionStatus int
@@ -90,18 +91,36 @@ func findTCPSocket(srcPort uint16, dstAddr net.IP, dstPort uint16) *socketStatus
 }
 
 func findUNIXSocket(socketFile string) *socketStatus {
-	var ss socketStatus
 	proto := "unix"
+
+	// /proc/net/unix
+	// Num       RefCount Protocol Flags    Type St Inode Path
+	// 0000000000000000: 00000003 00000000 00000000 0001 03 10893 P13838
+	// local_inode -> remote_inode
+	// 13838 -> 10893
+	var candidateInodes []uint64
+	inodeMap := make(map[uint64]uint64)
 	for _, line := range getSocketLines(proto) {
 		if len(line) == 0 {
 			continue
 		}
+		ss := socketStatus{}
 		if err := ss.parseUnixProcLine(line); err != nil {
 			log.Warning("Unable to parse line from /proc/net/%s [%s]: %v", proto, line, err)
 			continue
 		}
+		if ss.remoteInode != 0 {
+			inodeMap[ss.remoteInode] = ss.inode
+		}
 		if ss.path == socketFile {
-			ss.line = line
+			candidateInodes = append(candidateInodes, ss.inode)
+		}
+	}
+	for i := 0; i < len(candidateInodes); i++ {
+		remoteInode, ok := inodeMap[candidateInodes[i]]
+		if ok {
+			ss := socketStatus{}
+			ss.inode = remoteInode
 			return &ss
 		}
 	}
@@ -170,6 +189,12 @@ func (ss *socketStatus) parseUnixProcLine(line string) error {
 	}
 	if len(fs) == 8 {
 		ss.path = fs[7]
+		if strings.HasPrefix(ss.path, "P") {
+			ss.remoteInode, err = strconv.ParseUint(ss.path[1:], 10, 64)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }
