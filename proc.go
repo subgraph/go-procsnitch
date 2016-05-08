@@ -38,6 +38,15 @@ func LookupTCPSocketProcess(srcPort uint16, dstAddr net.IP, dstPort uint16) *Inf
 	return pcache.lookup(ss.inode)
 }
 
+// LookupUNIXSocketProcess searches for a UNIX domain socket with a given filename
+func LookupUNIXSocketProcess(socketFile string) *Info {
+	ss := findUNIXSocket(socketFile)
+	if ss == nil {
+		return nil
+	}
+	return pcache.lookup(ss.inode)
+}
+
 type connectionInfo struct {
 	pinfo  *Info
 	local  *socketAddr
@@ -109,7 +118,7 @@ func resolveProcinfo(conns []*connectionInfo) {
 		ss := new(socketStatus)
 		if err := ss.parseLine(line); err != nil {
 			log.Warning("Unable to parse line [%s]: %v", line, err)
-		}/* else {
+		} /* else {
 			/*
 				pid := findPidForInode(ss.inode)
 				if pid > 0 {
@@ -117,7 +126,7 @@ func resolveProcinfo(conns []*connectionInfo) {
 					fmt.Println("Socket", ss)
 					sockets = append(sockets, ss)
 				}
-			
+
 		}*/
 	}
 	for _, ci := range conns {
