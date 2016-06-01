@@ -20,6 +20,34 @@ func SetLogger(logger *logging.Logger) {
 
 var pcache = &pidCache{}
 
+// ProcInfo represents an api that can be used to query process information about
+// the far side of a network connection
+// Note: this can aid in the construction of unit tests.
+type ProcInfo interface {
+	LookupTCPSocketProcess(srcPort uint16, dstAddr net.IP, dstPort uint16) *Info
+	LookupUNIXSocketProcess(socketFile string) *Info
+	LookupUDPSocketProcess(srcPort uint16) *Info
+}
+
+// SystemProcInfo represents our real system ProcInfo api.
+type SystemProcInfo struct {
+}
+
+// LookupTCPSocketProcess returns the process information for a given TCP connection.
+func (r SystemProcInfo) LookupTCPSocketProcess(srcPort uint16, dstAddr net.IP, dstPort uint16) *Info {
+	return LookupTCPSocketProcess(srcPort, dstAddr, dstPort)
+}
+
+// LookupUNIXSocketProcess returns the process information for a given UNIX socket connection.
+func (r SystemProcInfo) LookupUNIXSocketProcess(socketFile string) *Info {
+	return LookupUNIXSocketProcess(socketFile)
+}
+
+// LookupUDPSocketProcess returns the process information for a given UDP socket connection.
+func (r SystemProcInfo) LookupUDPSocketProcess(srcPort uint16) *Info {
+	return LookupUDPSocketProcess(srcPort)
+}
+
 // LookupUDPSocketProcess searches for a UDP socket with a source port
 func LookupUDPSocketProcess(srcPort uint16) *Info {
 	ss := findUDPSocket(srcPort)
