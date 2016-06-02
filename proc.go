@@ -48,6 +48,24 @@ func (r SystemProcInfo) LookupUDPSocketProcess(srcPort uint16) *Info {
 	return LookupUDPSocketProcess(srcPort)
 }
 
+// FindProcessForConnection returns the process information for a given connection.
+// So far only TCP and UNIX domain socket connections are supported.
+func FindProcessForConnection(conn net.Conn, procInfo ProcInfo) *Info {
+	var info *Info
+	if conn.LocalAddr().Network() == "tcp" {
+		fields := strings.Split(conn.RemoteAddr().String(), ":")
+		dstPortStr := fields[1]
+		fields = strings.Split(conn.LocalAddr().String(), ":")
+		dstIP := net.ParseIP(fields[0])
+		srcP, _ := strconv.ParseUint(dstPortStr, 10, 16)
+		dstP, _ := strconv.ParseUint(fields[1], 10, 16)
+		info = procInfo.LookupTCPSocketProcess(uint16(srcP), dstIP, uint16(dstP))
+	} else if conn.LocalAddr().Network() == "unix" {
+		info = procInfo.LookupUNIXSocketProcess(conn.LocalAddr().String())
+	}
+	return info
+}
+
 // LookupUDPSocketProcess searches for a UDP socket with a source port
 func LookupUDPSocketProcess(srcPort uint16) *Info {
 	ss := findUDPSocket(srcPort)
